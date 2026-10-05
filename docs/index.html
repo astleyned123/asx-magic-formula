@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ASX Magic Formula</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #f3f5f2;
+  --surface: #ffffff;
+  --ink: #1d2623;
+  --muted: #5d6b66;
+  --line: #d9dfdb;
+  --eucalypt: #2f6b57;
+  --ochre: #b07a1f;
+  --row-hover: #eaf0ec;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121816; --surface: #19211e; --ink: #e5ebe8; --muted: #93a39c;
+    --line: #2b3632; --eucalypt: #6fb89c; --ochre: #d9a650; --row-hover: #1f2a26;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121816; --surface: #19211e; --ink: #e5ebe8; --muted: #93a39c;
+  --line: #2b3632; --eucalypt: #6fb89c; --ochre: #d9a650; --row-hover: #1f2a26;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font-family: "Archivo", system-ui, sans-serif; font-size: 15px; line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+}
+a { color: var(--eucalypt); }
+:focus-visible { outline: 2px solid var(--eucalypt); outline-offset: 2px; }
+
+header { padding: 40px 32px 24px; max-width: 1280px; margin: 0 auto; }
+h1 {
+  margin: 0; font-weight: 800; font-stretch: 125%; letter-spacing: -0.02em;
+  font-size: clamp(30px, 5vw, 52px); line-height: 1;
+}
+.sub { margin: 12px 0 0; color: var(--muted); max-width: 70ch; }
+
+.wrap {
+  max-width: 1280px; margin: 0 auto; padding: 0 32px 64px;
+  display: grid; grid-template-columns: 260px 1fr; gap: 32px; align-items: start;
+}
+aside { position: sticky; top: 16px; }
+main { min-width: 0; }
+td.period { white-space: nowrap; color: var(--muted); font-size: 13.5px; }
+.panel h2 { font-size: 15px; font-weight: 700; margin: 0 0 8px; }
+.field { margin-bottom: 24px; }
+.field label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+.cap { display: flex; align-items: center; gap: 6px; }
+.cap input {
+  width: 110px; font: inherit; font-size: 18px; font-weight: 600; padding: 6px 8px;
+  border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink);
+}
+input[type=search] {
+  width: 100%; font: inherit; padding: 8px 10px; border: 1px solid var(--line);
+  border-radius: 4px; background: var(--surface); color: var(--ink);
+}
+.inds { max-height: 52vh; overflow: auto; padding-right: 4px; }
+.inds label {
+  display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; color: var(--ink);
+  padding: 3px 0; cursor: pointer;
+}
+.inds input { margin-top: 3px; accent-color: var(--eucalypt); }
+.inds .n { margin-left: auto; color: var(--muted); }
+.btns { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+button {
+  font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 4px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+}
+button:hover { border-color: var(--eucalypt); }
+
+.summary { display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+  flex-wrap: wrap; margin-bottom: 10px; color: var(--muted); font-size: 14px; }
+.summary strong { color: var(--ink); }
+
+.tablewrap { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th {
+  text-align: left; font-size: 13px; font-weight: 600; color: var(--muted);
+  padding: 10px 10px; border-bottom: 1px solid var(--line); white-space: nowrap;
+  cursor: pointer; user-select: none; position: sticky; top: 0; background: var(--surface);
+}
+th.num, td.num { text-align: right; }
+th[aria-sort="ascending"]::after { content: " ↑"; }
+th[aria-sort="descending"]::after { content: " ↓"; }
+td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tbody tr:hover { background: var(--row-hover); }
+tbody tr:last-child td { border-bottom: 0; }
+
+td.rank { font-weight: 800; font-stretch: 112%; font-size: 20px; width: 56px; text-align: right; }
+tr.top td.rank { color: var(--eucalypt); }
+.code { font-weight: 700; }
+.code a { color: var(--ink); text-decoration: none; }
+.code a:hover { text-decoration: underline; }
+.name { max-width: 260px; }
+.name div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.name .ind { color: var(--muted); font-size: 12.5px; }
+
+/* Score bar: share of the combined score from each rank (balance of cheap vs good) */
+.score { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+.bar { display: flex; width: 72px; height: 8px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.bar .ey { background: var(--eucalypt); }
+.bar .roc { background: var(--ochre); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: 13px; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+.empty { padding: 40px; text-align: center; color: var(--muted); }
+footer { max-width: 1280px; margin: 0 auto; padding: 0 32px 48px; color: var(--muted); font-size: 13px; }
+footer p { max-width: 80ch; }
+details summary { cursor: pointer; }
+
+@media (max-width: 860px) {
+  header { padding: 28px 16px 16px; }
+  .wrap { grid-template-columns: 1fr; padding: 0 16px 48px; gap: 16px; }
+  aside { position: static; }
+  .inds { max-height: 40vh; }
+  footer { padding: 0 16px 40px; }
+  .hide-sm { display: none; }
+  td, th { padding: 8px; }
+  td.rank { font-size: 17px; width: 40px; }
+  .name { max-width: 160px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>ASX Magic Formula</h1>
+  <p class="sub" id="sub">Loading this week's data…</p>
+</header>
+
+<div class="wrap">
+  <aside class="panel">
+    <details open id="filters">
+      <summary hidden id="filtersToggle">Filters</summary>
+      <div class="field">
+        <label for="floor">Minimum market cap (A$ millions)</label>
+        <div class="cap">$<input id="floor" type="number" inputmode="numeric" step="50"></div>
+      </div>
+      <div class="field">
+        <label for="q">Find a company</label>
+        <input id="q" type="search" placeholder="Code or name">
+      </div>
+      <div class="field">
+        <h2>Industries included</h2>
+        <div class="inds" id="inds"></div>
+        <div class="btns">
+          <button id="all">Include all</button>
+          <button id="reset">Reset to defaults</button>
+        </div>
+      </div>
+    </details>
+  </aside>
+
+  <main>
+    <div class="summary">
+      <div id="count"></div>
+      <div class="legend">
+        <span>Score split:</span>
+        <span><span class="sw" style="background:var(--eucalypt)"></span>earnings yield rank</span>
+        <span><span class="sw" style="background:var(--ochre)"></span>return on capital rank</span>
+      </div>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr id="head"></tr></thead>
+        <tbody id="body"></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<footer>
+  <p>Ranking follows Joel Greenblatt's formula. Earnings yield is EBIT divided by enterprise value
+  (market cap plus debt, less cash). Return on capital is EBIT divided by net working capital plus
+  net fixed assets. Each stock is ranked on both, and the lowest combined score ranks first. Ranks
+  are recalculated whenever you change the filters, because they are relative to the stocks in the
+  list.</p>
+  <p>Loss-making, pre-revenue and foreign-domiciled companies are removed before ranking. EBIT uses
+  trailing twelve months where Yahoo Finance has it, otherwise the last full year (shown as TTM or
+  FY in the period column). Figures reported in other currencies are converted to A$.</p>
+  <details><summary>Removed during this week's screen</summary><p id="excl"></p></details>
+  <p>Data: ASX company directory and Yahoo Finance. Check figures against company reports before investing.</p>
+</footer>
+
+<script>
+const COLS = [
+  { key: "rank", label: "#", num: true },
+  { key: "code", label: "Code" },
+  { key: "name", label: "Company" },
+  { key: "market_cap_aud", label: "Mkt cap", num: true },
+  { key: "earnings_yield", label: "Earnings yield", num: true },
+  { key: "roc", label: "Return on capital", num: true },
+  { key: "score", label: "Score", num: true },
+  { key: "period_end", label: "Period", num: true, cls: "hide-sm" },
+];
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+let DATA, excluded, sortKey = "rank", sortDir = 1;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const cap = (v) => v >= 1e9 ? `$${(v / 1e9).toFixed(1)}b` : `$${Math.round(v / 1e6).toLocaleString()}m`;
+const period = (d) => ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+d.slice(5, 7) - 1] + " " + d.slice(2, 4);
+const pct = (v) => `${(v * 100).toFixed(1)}%`;
+
+// Same logic as rank() in magic_formula.py.
+function rankDesc(values) {
+  const order = values.map((_, i) => i).sort((a, b) => values[b] - values[a]);
+  const ranks = new Array(values.length);
+  order.forEach((i, pos) => {
+    ranks[i] = pos > 0 && values[i] === values[order[pos - 1]] ? ranks[order[pos - 1]] : pos + 1;
+  });
+  return ranks;
+}
+function rank(stocks, floor, excl) {
+  const pool = stocks.filter((s) => s.market_cap_aud >= floor && !excl.has(s.industry)).map((s) => ({ ...s }));
+  const ey = rankDesc(pool.map((s) => s.earnings_yield));
+  const roc = rankDesc(pool.map((s) => s.roc));
+  pool.forEach((s, i) => { s.ey_rank = ey[i]; s.roc_rank = roc[i]; s.score = ey[i] + roc[i]; });
+  pool.sort((a, b) => a.score - b.score || a.ey_rank - b.ey_rank || (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
+  pool.forEach((s, i) => { s.rank = i + 1; });
+  return pool;
+}
+
+function floorAud() {
+  const v = Number($("floor").value);
+  return Math.max(Number.isFinite(v) ? v * 1e6 : 0, DATA.fetch_floor_aud);
+}
+
+function renderIndustries() {
+  const counts = {};
+  DATA.stocks.forEach((s) => { if (s.market_cap_aud >= floorAud()) counts[s.industry] = (counts[s.industry] || 0) + 1; });
+  $("inds").innerHTML = DATA.industries.map((ind) => `
+    <label><input type="checkbox" value="${esc(ind)}" ${excluded.has(ind) ? "" : "checked"}>
+    <span>${esc(ind)}</span><span class="n">${counts[ind] || 0}</span></label>`).join("");
+}
+
+function render() {
+  const floor = floorAud();
+  const ranked = rank(DATA.stocks, floor, excluded);
+  const q = $("q").value.trim().toLowerCase();
+  let rows = q ? ranked.filter((s) => s.code.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)) : ranked;
+  rows = [...rows].sort((a, b) => {
+    const x = a[sortKey], y = b[sortKey];
+    return (x < y ? -1 : x > y ? 1 : 0) * sortDir;
+  });
+
+  $("count").innerHTML = `<strong>${ranked.length}</strong> stocks ranked above ${cap(floor)}` +
+    (q ? ` · ${rows.length} match “${esc(q)}”` : "");
+  $("head").innerHTML = COLS.map((c) => `<th class="${c.num ? "num" : ""} ${c.cls || ""}" data-k="${c.key}" tabindex="0"
+    ${c.key === sortKey ? `aria-sort="${sortDir > 0 ? "ascending" : "descending"}"` : ""}>${c.label}</th>`).join("");
+  $("body").innerHTML = rows.length ? rows.map((s) => `
+    <tr class="${s.rank <= 10 ? "top" : ""}">
+      <td class="rank">${s.rank}</td>
+      <td class="code"><a href="https://www.marketindex.com.au/asx/${s.code.toLowerCase()}" target="_blank" rel="noopener">${esc(s.code)}</a></td>
+      <td class="name"><div>${esc(s.name)}</div><div class="ind">${esc(s.industry)}</div></td>
+      <td class="num">${cap(s.market_cap_aud)}</td>
+      <td class="num">${pct(s.earnings_yield)}<div class="ind" style="color:var(--muted);font-size:12px">rank ${s.ey_rank}</div></td>
+      <td class="num">${pct(s.roc)}<div class="ind" style="color:var(--muted);font-size:12px">rank ${s.roc_rank}</div></td>
+      <td class="num"><div class="score">${s.score}
+        <span class="bar" title="EY rank ${s.ey_rank} + ROC rank ${s.roc_rank}">
+          <span class="ey" style="width:${(s.ey_rank / s.score) * 100}%"></span>
+          <span class="roc" style="width:${(s.roc_rank / s.score) * 100}%"></span></span></div></td>
+      <td class="num period hide-sm">${s.statement} ${period(s.period_end)}</td>
+    </tr>`).join("") : `<tr><td colspan="${COLS.length}" class="empty">No stocks match. Lower the market cap floor or include more industries.</td></tr>`;
+}
+
+function save() {
+  store.set("mf-settings", { floor: Number($("floor").value), excluded: [...excluded] });
+}
+function applyDefaults() {
+  $("floor").value = DATA.default_floor_aud / 1e6;
+  excluded = new Set(DATA.default_excluded_industries);
+}
+
+async function init() {
+  try {
+    DATA = await (await fetch("data.json", { cache: "no-store" })).json();
+  } catch {
+    $("sub").textContent = "This week's data hasn't been published yet. Run the “Weekly screen” workflow on GitHub, then reload.";
+    return;
+  }
+  const saved = store.get("mf-settings");
+  applyDefaults();
+  if (saved) {
+    if (Number.isFinite(saved.floor)) $("floor").value = saved.floor;
+    if (Array.isArray(saved.excluded)) excluded = new Set(saved.excluded);
+  }
+  $("floor").min = DATA.fetch_floor_aud / 1e6;
+
+  const when = new Date(DATA.generated_at).toLocaleString("en-AU", {
+    timeZone: "Australia/Adelaide", weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit",
+  });
+  $("sub").textContent = `Greenblatt's formula applied to ASX companies with positive earnings, ranked on earnings yield and return on capital. Updated ${when} Adelaide time, from ${DATA.screened} companies above ${cap(DATA.fetch_floor_aud)}.`;
+  $("excl").textContent = Object.entries(DATA.exclusions).map(([k, v]) => `${k}: ${v}`).join("; ") || "None";
+
+  if (window.matchMedia("(max-width: 860px)").matches) {
+    $("filtersToggle").hidden = false; $("filters").open = false;
+  }
+  renderIndustries(); render();
+
+  $("floor").addEventListener("change", () => { save(); renderIndustries(); render(); });
+  $("q").addEventListener("input", render);
+  $("inds").addEventListener("change", (e) => {
+    if (e.target.checked) excluded.delete(e.target.value); else excluded.add(e.target.value);
+    save(); render();
+  });
+  $("all").addEventListener("click", () => { excluded.clear(); save(); renderIndustries(); render(); });
+  $("reset").addEventListener("click", () => { applyDefaults(); save(); renderIndustries(); render(); });
+  const sortBy = (k) => {
+    if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = 1; }
+    render();
+  };
+  $("head").addEventListener("click", (e) => { const th = e.target.closest("th"); if (th) sortBy(th.dataset.k); });
+  $("head").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { const th = e.target.closest("th"); if (th) { e.preventDefault(); sortBy(th.dataset.k); } }
+  });
+}
+init();
+</script>
+</body>
+</html>
