@@ -6,7 +6,12 @@ Return on capital = EBIT / (Net working capital + Net fixed assets)
 Enterprise value      = Market cap + Total debt - Cash
 Net working capital   = (Current assets - Cash) - (Current liabilities - Short-term debt),
                         floored at zero (Greenblatt's treatment)
-Net fixed assets      = Net property, plant & equipment
+Net fixed assets      = Non-current assets - Goodwill & intangibles
+                        i.e. every tangible long-term operating asset, not just the
+                        line Yahoo labels PP&E. ASX companies often book mine
+                        development, exploration assets, non-current land inventory
+                        and joint-venture stakes outside PP&E; leaving them out made
+                        capital far too small and ROC far too high.
 
 Each stock is ranked on both measures (1 = best); the two ranks are summed
 and the lowest combined score ranks first.
@@ -28,7 +33,8 @@ class Financials:
     current_liabilities: float | None
     cash: float | None
     current_debt: float | None
-    net_ppe: float | None
+    total_assets: float | None
+    intangibles: float | None
     total_debt: float | None
 
 
@@ -61,15 +67,17 @@ def compute_metrics(f: Financials, market_cap_aud: float, fx_to_aud: float) -> d
 
     ca = _num(f.current_assets)
     cl = _num(f.current_liabilities)
-    ppe = _num(f.net_ppe)
-    if ca is None or cl is None or ppe is None:
+    ta = _num(f.total_assets)
+    if ca is None or cl is None or ta is None:
         raise Excluded("missing balance sheet data")
+    intangibles = _num(f.intangibles) or 0.0
     cash = _num(f.cash) or 0.0
     current_debt = _num(f.current_debt) or 0.0
     total_debt = _num(f.total_debt) or 0.0
 
     nwc = max((ca - cash) - (cl - current_debt), 0.0)
-    capital = nwc + max(ppe, 0.0)
+    fixed = max(ta - ca - intangibles, 0.0)
+    capital = nwc + fixed
     if capital <= 0:
         raise Excluded("no tangible capital")
 

@@ -16,7 +16,7 @@ from magic_formula import Excluded, Financials, compute_metrics, rank  # noqa: E
 
 def fin(**kw):
     base = dict(ebit=100, revenue=1000, net_income=60, current_assets=300,
-                current_liabilities=200, cash=50, current_debt=20, net_ppe=400,
+                current_liabilities=200, cash=50, current_debt=20, total_assets=700, intangibles=0,
                 total_debt=150)
     base.update(kw)
     return Financials(**base)
@@ -37,6 +37,18 @@ def test_negative_nwc_floored_at_zero():
     assert m["capital_aud"] == 400
 
 
+def test_intangibles_excluded_from_capital():
+    m = compute_metrics(fin(total_assets=1000, intangibles=300), 900, 1.0)
+    assert m["capital_aud"] == 70 + 400
+
+
+def test_non_ppe_long_term_assets_count_as_capital():
+    # Developer with land inventory booked as a non-current asset (not PP&E):
+    # EBIT 160, NWC 70, long-term land 1000 -> ROC ~15%, not 100%+.
+    m = compute_metrics(fin(ebit=160, total_assets=1300), 900, 1.0)
+    assert m["roc"] == pytest.approx(160 / 1070)
+
+
 def test_currency_conversion_only_affects_aud_amounts():
     usd = compute_metrics(fin(), market_cap_aud=900 * 1.5, fx_to_aud=1.5)
     aud = compute_metrics(fin(), market_cap_aud=900, fx_to_aud=1.0)
@@ -49,8 +61,8 @@ def test_currency_conversion_only_affects_aud_amounts():
     (dict(revenue=None), "pre-revenue"),
     (dict(ebit=-5), "loss-making"),
     (dict(net_income=-1), "loss-making"),
-    (dict(net_ppe=None), "missing balance sheet data"),
-    (dict(net_ppe=0, current_liabilities=900), "no tangible capital"),
+    (dict(total_assets=None), "missing balance sheet data"),
+    (dict(total_assets=300, current_liabilities=900), "no tangible capital"),
     (dict(cash=5000, current_assets=5300), "negative enterprise value"),
 ])
 def test_exclusions(kw, reason):
@@ -98,14 +110,14 @@ def fake_ticker(country="Australia", currency="AUD", ttm=True, half_year_complet
     recent = (pd.Timestamp.now() - pd.Timedelta(days=60)).strftime("%Y-%m-%d")
     old = (pd.Timestamp.now() - pd.Timedelta(days=240)).strftime("%Y-%m-%d")
     income = {"EBIT": 100.0, "Total Revenue": 1000.0, "Net Income": 60.0}
-    bs = {"Current Assets": 300.0, "Current Liabilities": 200.0, "Net PPE": 400.0,
+    bs = {"Current Assets": 300.0, "Current Liabilities": 200.0, "Total Assets": 700.0,
           "Cash And Cash Equivalents": 50.0, "Current Debt": 20.0, "Total Debt": 150.0}
     half = dict(bs) if half_year_complete else {"Current Assets": 1.0}
     return SimpleNamespace(
         info={"country": country, "financialCurrency": currency},
         ttm_income_stmt=frame(income, recent) if ttm else pd.DataFrame(),
         income_stmt=frame({**income, "EBIT": 80.0}, old),
-        quarterly_balance_sheet=frame({**half, "Net PPE": 999.0} if half_year_complete else half, recent),
+        quarterly_balance_sheet=frame({**half, "Total Assets": 1299.0} if half_year_complete else half, recent),
         balance_sheet=frame(bs, old),
     )
 

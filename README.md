@@ -14,9 +14,10 @@ Pure Greenblatt:
 | Measure | Formula |
 |---|---|
 | Earnings yield | EBIT ÷ (market cap + total debt − cash) |
-| Return on capital | EBIT ÷ (net working capital + net PP&E) |
+| Return on capital | EBIT ÷ (net working capital + net fixed assets) |
 
 - Net working capital excludes cash and short-term debt, and is floored at zero.
+- Net fixed assets means all non-current assets except goodwill and intangibles, so mine development, exploration assets, long-term land inventory and joint-venture stakes count as capital, not just the line labelled PP&E.
 - Each stock is ranked on both measures. The two ranks are added, and the lowest total ranks first.
 - Ranks are recalculated on the page whenever you change a filter.
 

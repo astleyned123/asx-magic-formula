@@ -78,7 +78,7 @@ def _col_date(df: pd.DataFrame | None) -> pd.Timestamp | None:
         return None
 
 
-BALANCE_REQUIRED =["Current Assets", "Current Liabilities", "Net PPE"]
+BALANCE_REQUIRED = ["Total Assets", "Current Assets", "Current Liabilities"]
 
 
 def _newest_complete(*frames: pd.DataFrame | None) -> pd.DataFrame | None:
@@ -103,6 +103,14 @@ def fx_to_aud(currency: str) -> float:
             raise RuntimeError(f"no FX rate for {currency}")
         _fx_cache[currency] = float(rate)
     return _fx_cache[currency]
+
+
+def _intangibles(balance: pd.DataFrame) -> float:
+    """Goodwill plus other intangibles (excluded from tangible capital)."""
+    combined = _latest(balance, ["Goodwill And Other Intangible Assets"])
+    if combined is not None:
+        return combined
+    return (_latest(balance, ["Goodwill"]) or 0.0) + (_latest(balance, ["Other Intangible Assets"]) or 0.0)
 
 
 # ---------- per company ----------
@@ -144,7 +152,8 @@ def fetch_one(row) -> dict:
                                "Cash And Cash Equivalents"]),
         current_debt=_latest(balance, ["Current Debt And Capital Lease Obligation",
                                        "Current Debt"]),
-        net_ppe=_latest(balance, ["Net PPE"]),
+        total_assets=_latest(balance, ["Total Assets"]),
+        intangibles=_intangibles(balance),
         total_debt=_latest(balance, ["Total Debt"]),
     )
     currency = info.get("financialCurrency") or "AUD"
