@@ -1,0 +1,60 @@
+name: Weekly screen
+
+on:
+  schedule:
+    - cron: "30 17 * * 0"
+    - cron: "30 18 * * 0"
+  workflow_dispatch:
+    inputs:
+      send_email:
+        description: "Send the email after this manual run"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: weekly-screen
+  cancel-in-progress: false
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Check this is the 4 am slot
+        id: gate
+        run: python gate.py "${{ github.event_name }}" "${{ github.event.schedule }}" >> "$GITHUB_OUTPUT"
+
+      - name: Install
+        if: steps.gate.outputs.run == 'true'
+        run: pip install -r requirements.txt
+
+      - name: Run screener
+        if: steps.gate.outputs.run == 'true'
+        run: python screener.py
+
+      - name: Publish results
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/data.json
+          git commit -m "Weekly screen $(date -u +%Y-%m-%d)" || echo "No changes"
+          git push
+
+      - name: Email summary
+        if: steps.gate.outputs.run == 'true' && (github.event_name == 'schedule' || inputs.send_email)
+        env:
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+        run: python emailer.py
